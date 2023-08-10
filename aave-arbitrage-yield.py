@@ -1,6 +1,7 @@
 import json
 from web3 import Web3
 import requests
+import time
 
 data_file = open("data.json")
 data = json.load(data_file)
@@ -129,21 +130,23 @@ def process_vault(name, chain, vault, last_block, w3):
 def toInt(value):
     return int(value, 16)
 
+while 1:
+    for data in chain_data:
+        if len(data["vaults"]) > 0:
+            print("AMM: {name}".format(name=data["name"]))
+            w3 = Web3(Web3.HTTPProvider(rpc_urls[data["chain"]]))
+            records = {}
+            for idx, vault in enumerate(data["vaults"]):
+                print("Vault: {vault}".format(vault=vault))
+                records[vault] = process_vault(
+                    data["name"],
+                    data["chain"],
+                    vault,
+                    data["deploy_blocks"][idx],
+                    w3
+                )
+            json_object = json.dumps(records, indent=4)
+            with open("../uni-analytics/data/aave-arbitrage-fees-{}.json".format(data["name"]), "w") as outfile:
+                outfile.write(json_object)
 
-for data in chain_data:
-    if len(data["vaults"]) > 0:
-        print("AMM: {name}".format(name=data["name"]))
-        w3 = Web3(Web3.HTTPProvider(rpc_urls[data["chain"]]))
-        records = {}
-        for idx, vault in enumerate(data["vaults"]):
-            print("Vault: {vault}".format(vault=vault))
-            records[vault] = process_vault(
-                data["name"],
-                data["chain"],
-                vault,
-                data["deploy_blocks"][idx],
-                w3
-            )
-        json_object = json.dumps(records, indent=4)
-        with open("../uni-analytics/data/aave-arbitrage-fees-{}.json".format(data["name"]), "w") as outfile:
-            outfile.write(json_object)
+    time.sleep(1800)
