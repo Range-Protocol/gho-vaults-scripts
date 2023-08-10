@@ -76,9 +76,9 @@ def process_vault(name, chain, vault, deploy_block, blocks_in_hour, w3):
                     key=lambda x: (x["blockNumber"], x["logIndex"]))
 
     decimal0 = toInt(
-        call(w3, w3.to_checksum_address(call(w3, vault, token0_selector)[26:66]), decimals_selector)[58:66])
+        call(w3, w3.toChecksumAddress(call(w3, vault, token0_selector)[26:66]), decimals_selector)[58:66])
     decimal1 = toInt(
-        call(w3, w3.to_checksum_address(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
+        call(w3, w3.toChecksumAddress(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
 
     is_token0_gho = bool(call(w3, vault, is_token0_gho_selector))
     if is_token0_gho:

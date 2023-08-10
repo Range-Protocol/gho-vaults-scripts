@@ -112,11 +112,11 @@ async def process_vault(name, chain, subgraph_link, supply_twap_ratio, blocks_in
 
     # get pool address from vault
     pool = call(w3, vault, pool_selector, last_block)
-    pool = w3.to_checksum_address("0x" + pool[26:66])
+    pool = w3.toChecksumAddress("0x" + pool[26:66])
 
     # get token0 address
     token0 = call(w3, vault, token0_selector, last_block)
-    token0 = w3.to_checksum_address(token0[26:66])
+    token0 = w3.toChecksumAddress(token0[26:66])
 
     # get token0 decimals
     decimal0 = call(w3, token0, decimals_selector, last_block)
@@ -124,7 +124,7 @@ async def process_vault(name, chain, subgraph_link, supply_twap_ratio, blocks_in
 
     # get token1 address
     token1 = call(w3, vault, token1_selector, last_block)
-    token1 = w3.to_checksum_address(token1[26:66])
+    token1 = w3.toChecksumAddress(token1[26:66])
 
     # get token1 decimals
     decimal1 = call(w3, token1, decimals_selector, last_block)

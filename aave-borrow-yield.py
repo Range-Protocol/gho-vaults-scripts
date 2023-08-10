@@ -73,9 +73,9 @@ def process_vault(name, chain, vault, last_block, w3):
             amount_minted = amount_minted - int(event["data"][0:66], 16)
 
     decimal0 = toInt(
-        call(w3, w3.to_checksum_address(call(w3, vault, token0_selector)[26:66]), decimals_selector)[58:66])
+        call(w3, w3.toChecksumAddress(call(w3, vault, token0_selector)[26:66]), decimals_selector)[58:66])
     decimal1 = toInt(
-        call(w3, w3.to_checksum_address(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
+        call(w3, w3.toChecksumAddress(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
 
     is_token0_gho = bool(call(w3, vault, is_token0_gho_selector))
     if is_token0_gho:
