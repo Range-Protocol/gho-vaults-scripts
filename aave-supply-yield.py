@@ -40,7 +40,6 @@ def call(w3, to, data, block=0):
 collateral_supplied_hash = Web3.keccak(text="CollateralSupplied(address,uint256)").hex()
 collateral_withdrawn_hash = Web3.keccak(text="CollateralWithdrawn(address,uint256)").hex()
 get_aave_position_data_selector = create_function_selector("getAavePositionData()")
-is_token0_gho_selector = create_function_selector("isToken0GHO()")
 token0_selector = create_function_selector("token0()")
 token1_selector = create_function_selector("token1()")
 decimals_selector = create_function_selector("decimals()")
@@ -73,24 +72,13 @@ def process_vault(name, chain, vault, last_block, w3):
         else:
             amount_supplied = amount_supplied - int(event["data"][66:130], 16)
 
-    decimal0 = toInt(
-        call(w3, w3.toChecksumAddress(call(w3, vault, token0_selector)[26:66]), decimals_selector)[58:66])
-    decimal1 = toInt(
+    decimals = toInt(
         call(w3, w3.toChecksumAddress(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
 
-    is_token0_gho = bool(call(w3, vault, is_token0_gho_selector))
-    if is_token0_gho:
-        amount_decimal = decimal1
-    else:
-        amount_decimal = decimal0
-
     current_amount = toInt(call(w3, vault, get_aave_position_data_selector)[
-                           0:66]) * 10 ** amount_decimal / aave_base_market_currency_multiplier
+                           0:66]) * 10 ** decimals / aave_base_market_currency_multiplier
 
-    if is_token0_gho:
-        return (current_amount - amount_supplied) / 10 ** decimal1
-    else:
-        return (current_amount - amount_supplied) / 10 ** decimal0
+    return current_amount - amount_supplied
 
 
 def toInt(value):

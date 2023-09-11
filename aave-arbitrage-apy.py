@@ -40,14 +40,9 @@ def call(w3, to, data, block=0):
         "data": data,
     }, block_identifier="latest" if block == 0 else block).hex()
 
-
-collateral_supplied_hash = Web3.keccak(text="CollateralSupplied(address,uint256)").hex()
-collateral_withdrawn_hash = Web3.keccak(text="CollateralWithdrawn(address,uint256)").hex()
-gho_minted_hash = Web3.keccak(text="GHOMinted(uint256)").hex()
-gho_burned_hash = Web3.keccak(text="GHOBurned(uint256)").hex()
-get_underlying_balance_selector = create_function_selector("getUnderlyingBalance()")
+pool_rebalanced_hash = Web3.keccak(text="PoolRebalanced()").hex()
+get_balance_in_collateral_token_selector = create_function_selector("getBalanceInCollateralToken()")
 get_current_fees_selector = create_function_selector("getCurrentFees()")
-is_token0_gho_selector = create_function_selector("isToken0GHO()")
 token0_selector = create_function_selector("token0()")
 token1_selector = create_function_selector("token1()")
 decimals_selector = create_function_selector("decimals()")
@@ -59,44 +54,17 @@ def process_vault(name, chain, vault, deploy_block, blocks_in_hour, w3):
     if deploy_block > block_at_last_week:
         block_at_last_week = deploy_block
 
-    # fetch all the events for the vault since last fetched block
-    collateral_supplied_events = requests.get(explorer_url.format(
+    # fetch events from last seven days or first block if deployment block is less than 7 days old
+    pool_rebalanced_events = requests.get(explorer_url.format(
         explorer_name=chain_to_explorer_name[chain],
         from_block=block_at_last_week,
         vault=vault,
-        topic=collateral_supplied_hash,
+        topic=pool_rebalanced_hash,
         api_key=chain_to_explorer_api_key[chain]
     )).json()["result"]
-
-    collateral_withdrawn_events = requests.get(explorer_url.format(
-        explorer_name=chain_to_explorer_name[chain],
-        from_block=block_at_last_week,
-        vault=vault,
-        topic=collateral_withdrawn_hash,
-        api_key=chain_to_explorer_api_key[chain]
-    )).json()["result"]
-
-    gho_minted_events = requests.get(explorer_url.format(
-        explorer_name=chain_to_explorer_name[chain],
-        from_block=block_at_last_week,
-        vault=vault,
-        topic=gho_minted_hash,
-        api_key=chain_to_explorer_api_key[chain]
-    )).json()["result"]
-
-    gho_burned_events = requests.get(explorer_url.format(
-        explorer_name=chain_to_explorer_name[chain],
-        from_block=block_at_last_week,
-        vault=vault,
-        topic=gho_burned_hash,
-        api_key=chain_to_explorer_api_key[chain]
-    )).json()["result"]
-
-    events = sorted(collateral_supplied_events + collateral_withdrawn_events + gho_minted_events + gho_burned_events,
-                    key=lambda x: (x["blockNumber"], x["logIndex"]))
 
     blocks = set()
-    for event in events:
+    for event in pool_rebalanced_events:
         blocks.add(toInt(event["blockNumber"]))
 
     decimal0 = toInt(
@@ -104,35 +72,22 @@ def process_vault(name, chain, vault, deploy_block, blocks_in_hour, w3):
     decimal1 = toInt(
         call(w3, w3.toChecksumAddress(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
 
-    is_token0_gho = bool(call(w3, vault, is_token0_gho_selector))
-    amount = 0
+    apy = 0
     for block in blocks:
         prev_fee_data = call(w3, vault, get_current_fees_selector, block - 1)
-        if is_token0_gho:
-            prev_fee0 = toInt(prev_fee_data[0: 66]) * 10 ** decimal1 / 10 ** decimal0
-            prev_fee1 = toInt(prev_fee_data[66: 130])
-        else:
-            prev_fee0 = toInt(prev_fee_data[0: 66])
-            prev_fee1 = toInt(prev_fee_data[66: 130]) * 10 ** decimal0 / 10 ** decimal1
-        prev_fee = prev_fee0 + prev_fee1
-        prev_balance = toInt(call(w3, vault, get_underlying_balance_selector, block - 1))
-        prev_total_amount = prev_fee + prev_balance
+        prev_fee = (toInt(prev_fee_data[0: 66]) * 10 ** decimal1 / 10 ** decimal0) + toInt(prev_fee_data[66: 130])
+        prev_balance = toInt(call(w3, vault, get_balance_in_collateral_token_selector, block - 1))
+        prev_amount = prev_balance - prev_fee
 
         current_fee_data = call(w3, vault, get_current_fees_selector, block)
-        if is_token0_gho:
-            current_fee0 = toInt(current_fee_data[0: 66]) * 10 ** decimal1 / 10 ** decimal0
-            current_fee1 = toInt(current_fee_data[66: 130])
-        else:
-            current_fee0 = toInt(current_fee_data[0: 66]) * 10 ** decimal0 / 10 ** decimal1
-            current_fee1 = toInt(current_fee_data[66: 130])
-        current_fee = current_fee0 + current_fee1
-        current_balance = toInt(call(w3, vault, get_underlying_balance_selector, block))
-        current_total_amount = current_fee + current_balance
+        current_fee = (toInt(current_fee_data[0: 66]) * 10 ** decimal1 / 10 ** decimal0) + toInt(current_fee_data[66: 130])
+        current_balance = toInt(call(w3, vault, get_balance_in_collateral_token_selector, block))
+        current_amount = current_balance - current_fee
 
-        diff = current_total_amount - prev_total_amount
-        amount = diff / 10 ** decimal1 if is_token0_gho else decimal0
+        diff = current_amount - prev_amount
+        apy += diff / current_balance
 
-    return amount * 52 * 100
+    return apy * 52
 
 
 def toInt(value):

@@ -44,7 +44,6 @@ def call(w3, to, data, block=0):
 collateral_supplied_hash = Web3.keccak(text="CollateralSupplied(address,uint256)").hex()
 collateral_withdrawn_hash = Web3.keccak(text="CollateralWithdrawn(address,uint256)").hex()
 get_aave_position_data_selector = create_function_selector("getAavePositionData()")
-is_token0_gho_selector = create_function_selector("isToken0GHO()")
 token0_selector = create_function_selector("token0()")
 token1_selector = create_function_selector("token1()")
 decimals_selector = create_function_selector("decimals()")
@@ -75,29 +74,21 @@ def process_vault(name, chain, vault, deploy_block, blocks_in_hour, w3):
     events = sorted(collateral_supplied_events + collateral_withdrawn_events,
                     key=lambda x: (x["blockNumber"], x["logIndex"]))
 
-    is_token0_gho = bool(call(w3, vault, is_token0_gho_selector))
-    decimal0 = toInt(
-        call(w3, w3.toChecksumAddress(call(w3, vault, token0_selector)[26:66]), decimals_selector)[58:66])
-    decimal1 = toInt(
-        call(w3, w3.toChecksumAddress(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
+    decimals = toInt(call(w3, w3.toChecksumAddress(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
+    collateral_amount_last_week = toInt(call(w3, vault, get_aave_position_data_selector, block_at_last_week)[
+                                        0:66]) * 10 ** decimals / aave_base_market_currency_multiplier
 
-    if is_token0_gho:
-        amount_decimal = decimal1
-    else:
-        amount_decimal = decimal0
-
-    amount_last_week = toInt(call(w3, vault, get_aave_position_data_selector, block_at_last_week)[
-                             0:66]) * 10 ** amount_decimal / aave_base_market_currency_multiplier
+    collateral_amount_delta = collateral_amount_last_week
     for event in events:
         if event["topics"][0] == collateral_supplied_hash:
-            amount_last_week = amount_last_week + toInt(event["data"][66:130])
+            collateral_amount_delta = collateral_amount_delta + toInt(event["data"][66:130])
         else:
-            amount_last_week = amount_last_week - toInt(event["data"][66:130])
+            collateral_amount_delta = collateral_amount_delta - toInt(event["data"][66:130])
 
     current_amount = toInt(call(w3, vault, get_aave_position_data_selector)[
-                           0:66]) * 10 ** amount_decimal / aave_base_market_currency_multiplier
+                           0:66]) * 10 ** decimals / aave_base_market_currency_multiplier
 
-    diff = current_amount - amount_last_week
+    diff = current_amount - collateral_amount_delta
     return (diff / current_amount) * 52 * 100
 
 
