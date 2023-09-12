@@ -46,6 +46,7 @@ collateral_withdrawn_hash = Web3.keccak(text="CollateralWithdrawn(address,uint25
 gho_minted_hash = Web3.keccak(text="GHOMinted(uint256)").hex()
 gho_burned_hash = Web3.keccak(text="GHOBurned(uint256)").hex()
 get_aave_position_data_selector = create_function_selector("getAavePositionData()")
+underlying_balance_selector = create_function_selector("getBalanceInCollateralToken()")
 token0_selector = create_function_selector("token0()")
 token1_selector = create_function_selector("token1()")
 decimals_selector = create_function_selector("decimals()")
@@ -90,8 +91,7 @@ def supply_apy(name, chain, vault, deploy_block, blocks_in_hour, w3):
     current_amount = toInt(call(w3, vault, get_aave_position_data_selector)[
                            0:66]) * 10 ** decimals / aave_base_market_currency_multiplier
 
-    diff = current_amount - collateral_amount_delta
-    return diff, current_amount
+    return current_amount - collateral_amount_delta
 
 def borrow_apy(name, chain, vault, deploy_block, blocks_in_hour, w3):
     block_at_last_week = w3.eth.block_number - (blocks_in_hour * hours_in_seven_days)
@@ -149,7 +149,7 @@ while 1:
             records = {}
             for idx, vault in enumerate(data["vaults"]):
                 print("Vault: {vault}".format(vault=vault))
-                supply_delta_amount, supply_amount = supply_apy(
+                supply_delta_amount = supply_apy(
                     data["name"],
                     data["chain"],
                     vault,
@@ -165,7 +165,9 @@ while 1:
                     data["blocks_in_hour"],
                     w3
                 )
-                records[vault] = (supply_delta_amount - borrow_delta_amount) / supply_amount * 52 * 100
+                underlying_balance = toInt(
+                    call(w3, vault, underlying_balance_selector)[0:66])
+                records[vault] = (supply_delta_amount - borrow_delta_amount) / underlying_balance * 52 * 100
             json_object = json.dumps(records, indent=4)
             with open("../uni-analytics/data/aave-supply-apy-{}.json".format(data["name"]), "w") as outfile:
                 outfile.write(json_object)

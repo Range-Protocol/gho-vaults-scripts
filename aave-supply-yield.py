@@ -145,7 +145,6 @@ while 1:
                     data["deploy_blocks"][idx],
                     w3
                 )
-                print(supply_yield_amount, borrow_yield_amount)
                 records[vault] = supply_yield_amount - borrow_yield_amount
             json_object = json.dumps(records, indent=4)
             with open("../uni-analytics/data/aave-supply-fees-{}.json".format(data["name"]), "w") as outfile:
