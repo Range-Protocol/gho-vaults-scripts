@@ -43,13 +43,14 @@ def call(w3, to, data, block=0):
 
 collateral_supplied_hash = Web3.keccak(text="CollateralSupplied(address,uint256)").hex()
 collateral_withdrawn_hash = Web3.keccak(text="CollateralWithdrawn(address,uint256)").hex()
+gho_minted_hash = Web3.keccak(text="GHOMinted(uint256)").hex()
+gho_burned_hash = Web3.keccak(text="GHOBurned(uint256)").hex()
 get_aave_position_data_selector = create_function_selector("getAavePositionData()")
 token0_selector = create_function_selector("token0()")
 token1_selector = create_function_selector("token1()")
 decimals_selector = create_function_selector("decimals()")
 
-
-def process_vault(name, chain, vault, deploy_block, blocks_in_hour, w3):
+def supply_apy(name, chain, vault, deploy_block, blocks_in_hour, w3):
     block_at_last_week = w3.eth.block_number - (blocks_in_hour * hours_in_seven_days)
     if deploy_block > block_at_last_week:
         block_at_last_week = deploy_block
@@ -74,7 +75,8 @@ def process_vault(name, chain, vault, deploy_block, blocks_in_hour, w3):
     events = sorted(collateral_supplied_events + collateral_withdrawn_events,
                     key=lambda x: (x["blockNumber"], x["logIndex"]))
 
-    decimals = toInt(call(w3, w3.toChecksumAddress(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
+    decimals = toInt(
+        call(w3, w3.to_checksum_address(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
     collateral_amount_last_week = toInt(call(w3, vault, get_aave_position_data_selector, block_at_last_week)[
                                         0:66]) * 10 ** decimals / aave_base_market_currency_multiplier
 
@@ -89,8 +91,51 @@ def process_vault(name, chain, vault, deploy_block, blocks_in_hour, w3):
                            0:66]) * 10 ** decimals / aave_base_market_currency_multiplier
 
     diff = current_amount - collateral_amount_delta
-    return (diff / current_amount) * 52 * 100
+    return diff, current_amount
 
+def borrow_apy(name, chain, vault, deploy_block, blocks_in_hour, w3):
+    block_at_last_week = w3.eth.block_number - (blocks_in_hour * hours_in_seven_days)
+    if deploy_block > block_at_last_week:
+        block_at_last_week = deploy_block
+
+    # fetch all the events for the vault since last fetched block
+    gho_minted_events = requests.get(explorer_url.format(
+        explorer_name=chain_to_explorer_name[chain],
+        from_block=block_at_last_week,
+        vault=vault,
+        topic=gho_minted_hash,
+        api_key=chain_to_explorer_api_key[chain]
+    )).json()["result"]
+
+    gho_burned_events = requests.get(explorer_url.format(
+        explorer_name=chain_to_explorer_name[chain],
+        from_block=block_at_last_week,
+        vault=vault,
+        topic=gho_burned_hash,
+        api_key=chain_to_explorer_api_key[chain]
+    )).json()["result"]
+
+    events = sorted(gho_minted_events + gho_burned_events,
+                    key=lambda x: (x["blockNumber"], x["logIndex"]))
+
+    decimal0 = toInt(
+        call(w3, w3.to_checksum_address(call(w3, vault, token0_selector)[26:66]), decimals_selector)[58:66])
+
+    decimal1 = toInt(
+        call(w3, w3.to_checksum_address(call(w3, vault, token1_selector)[26:66]), decimals_selector)[58:66])
+
+    amount = toInt(call(w3, vault, get_aave_position_data_selector, block_at_last_week)[
+                   66:130]) * 10 ** decimal0 / aave_base_market_currency_multiplier
+    for event in events:
+        if event["topics"][0] == gho_minted_hash:
+            amount = amount + toInt(event["data"][0:66])
+        else:
+            amount = amount - toInt(event["data"][0:66])
+
+    current_amount = int(call(w3, vault, get_aave_position_data_selector)[66:130],
+                         16) * 10 ** decimal0 / aave_base_market_currency_multiplier
+    diff = current_amount - amount
+    return diff * 10 ** decimal1 / 10 ** decimal0
 
 def toInt(value):
     return int(value, 16)
@@ -104,7 +149,7 @@ while 1:
             records = {}
             for idx, vault in enumerate(data["vaults"]):
                 print("Vault: {vault}".format(vault=vault))
-                records[vault] = process_vault(
+                supply_delta_amount, supply_amount = supply_apy(
                     data["name"],
                     data["chain"],
                     vault,
@@ -112,6 +157,15 @@ while 1:
                     data["blocks_in_hour"],
                     w3
                 )
+                borrow_delta_amount = borrow_apy(
+                    data["name"],
+                    data["chain"],
+                    vault,
+                    data["deploy_blocks"][idx],
+                    data["blocks_in_hour"],
+                    w3
+                )
+                records[vault] = (supply_delta_amount - borrow_delta_amount) / supply_amount * 52 * 100
             json_object = json.dumps(records, indent=4)
             with open("../uni-analytics/data/aave-supply-apy-{}.json".format(data["name"]), "w") as outfile:
                 outfile.write(json_object)

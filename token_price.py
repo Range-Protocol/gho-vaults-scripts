@@ -167,7 +167,7 @@ config = [
      },
 ]
 
-weth = w3.eth.contract(address=w3.toChecksumAddress('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'),
+weth = w3.eth.contract(address=w3.to_checksum_address('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'),
                        abi=erc20_abi)
 
 # non-standard decimal coins
@@ -178,7 +178,7 @@ usdc_polygon = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 
 def get_price(vault, block):
     if vault['chainId'] == 1:
-        v3_pool = w3.eth.contract(address=w3.toChecksumAddress(vault['pool_address']),
+        v3_pool = w3.eth.contract(address=w3.to_checksum_address(vault['pool_address']),
                                   abi=v3pool_abi)
         slot0 = v3_pool.functions.slot0().call(block_identifier=block)
         if vault['token0'] == usdc and vault['token1'] != usdt:
@@ -188,17 +188,17 @@ def get_price(vault, block):
         else:
             token_price = 1 / (1.0001 ** slot0[1])
     elif vault['chainId'] == 56:
-        v3_pool = w3_bsc.eth.contract(address=w3_bsc.toChecksumAddress(vault['pool_address']),
+        v3_pool = w3_bsc.eth.contract(address=w3_bsc.to_checksum_address(vault['pool_address']),
                                   abi=pancake_pool_abi)
         slot0 = v3_pool.functions.slot0().call(block_identifier=block)
         token_price = 1 / (1.0001 ** slot0[1])
     elif vault['chainId'] == 42161:
-        v3_pool = w3_arbitrum.eth.contract(address=w3_arbitrum.toChecksumAddress(vault['pool_address']),
+        v3_pool = w3_arbitrum.eth.contract(address=w3_arbitrum.to_checksum_address(vault['pool_address']),
                                   abi=v3pool_abi)
         slot0 = v3_pool.functions.slot0().call(block_identifier=block)
         token_price = 1 / (1.0001 ** slot0[1])
     elif vault['chainId'] == 137:
-        v3_pool = w3_polygon.eth.contract(address=w3_polygon.toChecksumAddress(vault['pool_address']),
+        v3_pool = w3_polygon.eth.contract(address=w3_polygon.to_checksum_address(vault['pool_address']),
                                   abi=algebra_pool_abi)
         slot0 = v3_pool.functions.globalState().call(block_identifier=block)
         if vault['token0'] == usdc_polygon:
@@ -224,7 +224,7 @@ while 1:
         elif chainId == 137:
             incr = 2000
             w3Cli = w3_polygon
-        fileName = '../uni-analytics/data/prices/' + str(chainId) + '-' + w3.toChecksumAddress(vault["vault_address"]) + '.csv'
+        fileName = '../uni-analytics/data/prices/' + str(chainId) + '-' + w3.to_checksum_address(vault["vault_address"]) + '.csv'
         exists = os.path.exists(fileName)
         if not exists:
             file = open(fileName, 'a')
