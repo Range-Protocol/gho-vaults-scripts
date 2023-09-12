@@ -1,22 +1,19 @@
 {
     "rpc_urls": {
-        "ethereum": "https://eth-mainnet.g.alchemy.com/v2/CjYmaEKxlp-_BuTgFt22DeY3YlTQWY8O",
-        "bsc": "https://bscrpc.com",
-        "polygon": "https://polygon-mainnet.g.alchemy.com/v2/tH5oSKsser3VDOLU3zTj-sSjEHfzuq8W",
-        "arbitrum": "https://arb-mainnet.g.alchemy.com/v2/Pqog3_-tcnGxaLf69pctUHA-r04i4wmr"
+        "ethereum": "https://eth-mainnet.g.alchemy.com/v2/CjYmaEKxlp-_BuTgFt22DeY3YlTQWY8O"
     },
     "chain_data": [
         {
-            "name": "ethereum-uniswap",
+            "name": "ethereum-gho",
             "chain": "ethereum",
             "chain_id": 1,
-            "subgraph_link": "https://api.thegraph.com/subgraphs/name/0xbateman/aave-ethereum",
+            "subgraph_link": "https://api.thegraph.com/subgraphs/name/0xbateman/gho-vault",
             "blocks_in_hour": 300,
             "vaults": [
-                "0x15952e000D8417899Bd643C35D9ea195EC564e3D"
+                "0x2d6e60bB49d6403774BC0EC0094228336f0b7431"
             ],
             "deploy_blocks": [
-                17812539
+                18117468
             ]
         }
     ]

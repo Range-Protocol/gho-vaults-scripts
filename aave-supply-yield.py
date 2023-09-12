@@ -78,7 +78,7 @@ def process_vault(name, chain, vault, last_block, w3):
     current_amount = toInt(call(w3, vault, get_aave_position_data_selector)[
                            0:66]) * 10 ** decimals / aave_base_market_currency_multiplier
 
-    return current_amount - amount_supplied
+    return (current_amount - amount_supplied) / 10 ** decimals
 
 
 def toInt(value):

@@ -22,7 +22,7 @@ def call(w3, to, data, block_number):
 
 # create selectors for all the used function signatures.
 current_fee_selector = create_function_selector("getCurrentFees()")
-underlying_balance_selector = create_function_selector("getUnderlyingBalance()")
+underlying_balance_selector = create_function_selector("getBalanceInCollateralToken()")
 pool_selector = create_function_selector("pool()")
 slot0_selector = create_function_selector("slot0()")
 token0_selector = create_function_selector("token0()")
@@ -39,7 +39,7 @@ async def process_vault(name, chain, subgraph_link, supply_twap_ratio, blocks_in
         w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     
     transport = AIOHTTPTransport(url=subgraph_link)
-    client = Client(transport=transport, fetch_schema_from_transport=True)
+    client = Client(transport=transport, fetch_schema_from_transport=False)
     block_at_last_week = w3.eth.block_number - (blocks_in_hour * hours_in_seven_days)
     timestamp_last_week = w3.eth.get_block(block_at_last_week).timestamp
     timestamp_last_block = w3.eth.get_block(last_block).timestamp
