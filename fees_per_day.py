@@ -21,10 +21,10 @@ chain_to_explorer_name = {
     "polygon": "polygonscan.com"
 }
 chain_to_explorer_api_key = {
-    "ethereum": "DNRBUQ9BW2YU2777ZAF4767QS2B6AHQIGS",
-    "arbitrum": "XPQH853TTPK4PJSD5ZVNIUQ7AUJJMQQRZF",
-    "bsc": "XDSTRY7M9CDMZFEHGUDEQYAKI4DJJDBDZ9",
-    "polygon": "UQU8PVWE6YEVS8BNPQCYWPFAYC6VCYV75J"
+    "ethereum": "",
+    "arbitrum": "",
+    "bsc": "",
+    "polygon": ""
 }
 
 
